@@ -8,6 +8,14 @@
  * UI action: Click tenant row → detail view
  *   → BFF  GET /bff/tenants/:id
  *   → Helios operationId: getTenant  (GET /v1/tenants/{tenantId})
+ *
+ * UI action: "Create Tenant" form submit (write mode only)
+ *   → BFF  POST /bff/tenants
+ *   → Helios operationId: createTenant  (POST /v1/tenants)
+ *
+ * UI action: "Save" in tenant edit form (write mode only)
+ *   → BFF  PUT /bff/tenants/:id
+ *   → Helios operationId: updateTenant  (PUT /v1/tenants/{tenantId})
  */
 const { createHeliosClient } = require('../clients/heliosClient');
 const { mapTenant } = require('../dto');
@@ -44,4 +52,36 @@ async function getTenant(req, res, next) {
   }
 }
 
-module.exports = { listTenants, getTenant };
+async function createTenant(req, res, next) {
+  try {
+    const { name } = req.body;
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return next(Object.assign(new Error('name is required'), { status: 400 }));
+    }
+    const client = createHeliosClient(req.heliosToken);
+    const { data } = await client.post('/v1/tenants', { name: name.trim() });
+    res.status(201).json(mapTenant(data.data || data));
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function updateTenant(req, res, next) {
+  try {
+    const id = validateId(req.params.id, 'tenantId');
+    const { name, version } = req.body;
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return next(Object.assign(new Error('name is required'), { status: 400 }));
+    }
+    const client = createHeliosClient(req.heliosToken);
+    const { data } = await client.put(`/v1/tenants/${id}`, {
+      name: name.trim(),
+      version,
+    });
+    res.json(mapTenant(data.data || data));
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { listTenants, getTenant, createTenant, updateTenant };

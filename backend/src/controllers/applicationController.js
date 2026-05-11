@@ -20,6 +20,14 @@
  * UI action: Click deployment row → deployment detail
  *   → BFF  GET /bff/applications/:id/deployments/:depId?tenantId=
  *   → Helios operationId: getDeployment  (GET /v1/applications/{applicationId}/deployments/{deploymentId})
+ *
+ * UI action: "Create Application" form submit (write mode only)
+ *   → BFF  POST /bff/applications
+ *   → Helios operationId: createApplication  (POST /v1/applications)
+ *
+ * UI action: "Save" in application edit form (write mode only)
+ *   → BFF  PUT /bff/applications/:id
+ *   → Helios operationId: updateApplication  (PUT /v1/applications/{applicationId})
  */
 const { createHeliosClient } = require('../clients/heliosClient');
 const { mapApplication, mapDeployment } = require('../dto');
@@ -103,10 +111,56 @@ async function getDeployment(req, res, next) {
   }
 }
 
+async function createApplication(req, res, next) {
+  try {
+    const { name, displayName, owner, ownerEmail, tenancyType } = req.body;
+    if (!name || !owner || !ownerEmail) {
+      return next(
+        Object.assign(new Error('name, owner, and ownerEmail are required'), { status: 400 })
+      );
+    }
+    const client = createHeliosClient(req.heliosToken, req.query.tenantId);
+    const { data } = await client.post('/v1/applications', {
+      name,
+      displayName: displayName || undefined,
+      owner,
+      ownerEmail,
+      tenancyType: tenancyType || undefined,
+    });
+    res.status(201).json(mapApplication(data.data || data));
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function updateApplication(req, res, next) {
+  try {
+    const id = validateId(req.params.id, 'applicationId');
+    const { displayName, owner, ownerEmail, version } = req.body;
+    if (!owner || !ownerEmail) {
+      return next(
+        Object.assign(new Error('owner and ownerEmail are required'), { status: 400 })
+      );
+    }
+    const client = createHeliosClient(req.heliosToken, req.query.tenantId);
+    const { data } = await client.put(`/v1/applications/${id}`, {
+      displayName: displayName || undefined,
+      owner,
+      ownerEmail,
+      version,
+    });
+    res.json(mapApplication(data.data || data));
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   listApplications,
   getApplication,
   getApplicationRoles,
   listDeployments,
   getDeployment,
+  createApplication,
+  updateApplication,
 };

@@ -14,4 +14,6 @@ module.exports = {
   frontend: {
     url: process.env.FRONTEND_URL || 'http://localhost:3000',
   },
+  // Write operations are opt-in. Set ENABLE_WRITE_OPS=true to allow POST/PUT.
+  enableWriteOps: process.env.ENABLE_WRITE_OPS === 'true',
 };
