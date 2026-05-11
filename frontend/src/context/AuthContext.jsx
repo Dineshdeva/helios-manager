@@ -38,7 +38,12 @@ export function AuthProvider({ children }) {
         ...s,
         authenticated: data.authenticated,
         user: data.user,
-        loginUrl: DEFAULT_LOGIN_URL,
+        // Prefer an absolute URL from the server; relative paths won't work
+        // cross-origin (frontend on Vercel, backend on Render/Railway).
+        loginUrl:
+          data.loginUrl && data.loginUrl.startsWith('http')
+            ? data.loginUrl
+            : DEFAULT_LOGIN_URL,
         loading: false,
         authError: null,
       }));
