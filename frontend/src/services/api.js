@@ -10,8 +10,10 @@
 import axios from 'axios';
 
 // Vite dev server proxies /bff → http://localhost:3001/bff
-// In production set VITE_BFF_URL to the deployed BFF origin.
-const BASE_URL = import.meta.env.VITE_BFF_URL || '/bff';
+// In production set VITE_BFF_URL to the deployed BFF base URL
+// (e.g. https://your-backend.onrender.com/bff).
+export const BFF_BASE = import.meta.env.VITE_BFF_URL || '/bff';
+const BASE_URL = BFF_BASE;
 
 const client = axios.create({
   baseURL: BASE_URL,
@@ -40,11 +42,11 @@ client.interceptors.response.use(
 // ── Auth ──────────────────────────────────────────────────────────────────────
 // GET /bff/auth/status — is there a live session?
 export const getAuthStatus = () =>
-  axios.get('/bff/auth/status', { withCredentials: true }).then((r) => r.data);
+  axios.get(`${BFF_BASE}/auth/status`, { withCredentials: true }).then((r) => r.data);
 
 // POST /bff/auth/logout — destroy the BFF session
 export const postLogout = () =>
-  axios.post('/bff/auth/logout', {}, { withCredentials: true }).then((r) => r.data);
+  axios.post(`${BFF_BASE}/auth/logout`, {}, { withCredentials: true }).then((r) => r.data);
 
 // ── Write-ops flag ────────────────────────────────────────────────────────────
 // UI: write-mode toggle → GET /bff/write-enabled → server ENABLE_WRITE_OPS flag

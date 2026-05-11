@@ -77,7 +77,77 @@ The Vite dev server proxies `/bff/*` → `http://localhost:3001/bff/*` automatic
 
 ---
 
-## BFF Endpoint Reference
+## Deployment
+
+### Recommended: Frontend → Vercel, Backend → Render / Railway
+
+This project is a monorepo with two separate deployable units:
+- **Frontend** — Vite/React static site (Vercel)
+- **Backend (BFF)** — Express.js long-running server (Render, Railway, Fly.io)
+
+> Vercel's serverless model is not compatible with `express-session` MemoryStore (sessions are lost between invocations). Deploying the backend to a persistent Node.js host avoids this limitation entirely.
+
+---
+
+#### 1 — Deploy the Backend (Render / Railway)
+
+1. Create a new **Web Service** on [Render](https://render.com) (or equivalent) pointing at the `backend/` directory.
+2. Set **Build Command**: `npm install`  
+   Set **Start Command**: `npm start`
+3. Set all required environment variables in the platform dashboard:
+
+| Variable | Value |
+|---|---|
+| `HELIOS_BASE_URL` | `https://api.guidewire.com` |
+| `HELIOS_CLIENT_ID` | Your Okta client ID |
+| `HELIOS_CLIENT_SECRET` | Your Okta client secret (if using client-credentials) |
+| `HELIOS_TOKEN_URL` | Okta token endpoint |
+| `HELIOS_REDIRECT_URI` | `https://your-backend.onrender.com/bff/auth/callback` |
+| `HELIOS_SCOPES` | `groups tenant_id` |
+| `SESSION_SECRET` | Long random string — generate with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `COOKIE_SECURE` | `true` |
+| `FRONTEND_URL` | `https://your-frontend.vercel.app` (set after deploying frontend) |
+| `ENABLE_WRITE_OPS` | `false` (or `true` to allow mutations) |
+
+4. Note the deployed backend URL (e.g. `https://helios-manager-bff.onrender.com`).
+
+---
+
+#### 2 — Register the production redirect URI in Okta
+
+In your Okta app settings, add the production callback URL as an allowed redirect URI:
+
+```
+https://your-backend.onrender.com/bff/auth/callback
+```
+
+---
+
+#### 3 — Deploy the Frontend (Vercel)
+
+1. Import the repository on [Vercel](https://vercel.com) and set the **Root Directory** to `frontend/`.
+2. Vercel will automatically detect the `frontend/vercel.json` settings:
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+   - **Install Command**: `npm install`
+   - SPA rewrite rule (so React Router deep links work)
+3. Add the following **Environment Variable** in the Vercel project settings:
+
+| Variable | Value |
+|---|---|
+| `VITE_BFF_URL` | `https://your-backend.onrender.com/bff` |
+
+4. Deploy. The frontend will call the backend using the `VITE_BFF_URL` value at build time.
+
+---
+
+#### 4 — Wire up CORS
+
+Once both services are deployed, go back to the backend platform and update `FRONTEND_URL` to your Vercel URL (e.g. `https://helios-manager.vercel.app`). The BFF CORS policy uses this value to allow cross-origin requests from the frontend.
+
+---
+
+
 
 | BFF Endpoint | Helios operationId | Description |
 |---|---|---|
