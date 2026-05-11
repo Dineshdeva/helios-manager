@@ -1,15 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getTenant } from '../services/api';
+import { getTenant, updateTenant } from '../services/api';
+import { useWriteMode } from '../context/WriteModeContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorAlert from '../components/ErrorAlert';
 import Badge from '../components/Badge';
+import ConfirmDialog from '../components/ConfirmDialog';
+import FormModal from '../components/FormModal';
 
 /**
- * Tenant detail page — property inspection for a single tenant.
+ * Tenant detail page — property inspection and editing for a single tenant.
  *
  * UI action: page load
  *   → GET /bff/tenants/:id   → Helios: getTenant
+ *
+ * UI action: Edit Tenant (write mode)
+ *   → PUT /bff/tenants/:id   → Helios: updateTenant
  */
 function InfoRow({ label, value }) {
   return (
@@ -27,8 +33,16 @@ export default function TenantDetail() {
   const [tenant, setTenant] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { writeMode } = useWriteMode();
 
-  const load = async () => {
+  // Edit form
+  const [showEdit, setShowEdit] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [pendingEdit, setPendingEdit] = useState(false);
+  const [formError, setFormError] = useState(null);
+
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -39,9 +53,24 @@ export default function TenantDetail() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  useEffect(() => { load(); }, [id]);
+  useEffect(() => { load(); }, [load]);
+
+  const handleEdit = async () => {
+    setEditSubmitting(true);
+    setFormError(null);
+    try {
+      const updated = await updateTenant(id, { name: editName.trim() });
+      setTenant(updated);
+      setShowEdit(false);
+      setPendingEdit(false);
+    } catch (err) {
+      setFormError(err.message);
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
 
   return (
     <div className="p-8">
@@ -66,11 +95,19 @@ export default function TenantDetail() {
               <h1 className="text-2xl font-bold text-gray-900">{tenant.name}</h1>
               <p className="text-sm text-gray-500 font-mono mt-0.5">{tenant.id}</p>
             </div>
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-2">
               {tenant.isTestData ? (
                 <Badge variant="yellow">Test Data</Badge>
               ) : (
                 <Badge variant="green">Live</Badge>
+              )}
+              {writeMode && (
+                <button
+                  className="btn-secondary text-sm"
+                  onClick={() => { setEditName(tenant.name); setFormError(null); setShowEdit(true); }}
+                >
+                  ✏️ Edit
+                </button>
               )}
             </div>
           </div>
@@ -106,6 +143,39 @@ export default function TenantDetail() {
           </div>
         </>
       )}
+
+      {/* Edit modal */}
+      <FormModal
+        open={showEdit}
+        title={`Edit Tenant: ${tenant?.name}`}
+        onClose={() => setShowEdit(false)}
+        onSubmit={() => setPendingEdit(true)}
+        submitting={editSubmitting}
+        submitLabel="Save"
+      >
+        {formError && <ErrorAlert message={formError} />}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Tenant Name <span className="text-red-500">*</span>
+          </label>
+          <input
+            className="input"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            required
+            autoFocus
+          />
+        </div>
+      </FormModal>
+
+      <ConfirmDialog
+        open={pendingEdit}
+        title="Save Changes"
+        message={`Rename tenant to "${editName}"? This affects all systems using this tenant.`}
+        confirmLabel="Save"
+        onConfirm={handleEdit}
+        onCancel={() => setPendingEdit(false)}
+      />
     </div>
   );
 }

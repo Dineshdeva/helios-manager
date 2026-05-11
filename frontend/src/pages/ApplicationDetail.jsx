@@ -4,10 +4,14 @@ import {
   getApplication,
   getDeployments,
   getSettingDefinitions,
+  updateApplication,
 } from '../services/api';
+import { useWriteMode } from '../context/WriteModeContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorAlert from '../components/ErrorAlert';
 import Badge from '../components/Badge';
+import ConfirmDialog from '../components/ConfirmDialog';
+import FormModal from '../components/FormModal';
 
 /**
  * Application detail page — inspect an application, its deployments and setting definitions.
@@ -51,6 +55,14 @@ export default function ApplicationDetail() {
   const [settingDefs, setSettingDefs] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { writeMode } = useWriteMode();
+
+  // Edit form
+  const [showEdit, setShowEdit] = useState(false);
+  const [editForm, setEditForm] = useState({ displayName: '', owner: '', ownerEmail: '' });
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [pendingEdit, setPendingEdit] = useState(false);
+  const [formError, setFormError] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -96,11 +108,23 @@ export default function ApplicationDetail() {
               <h1 className="text-2xl font-bold text-gray-900">{app.displayName}</h1>
               <p className="text-sm text-gray-500 font-mono mt-0.5">{app.name}</p>
             </div>
-            <div className="ml-auto flex gap-2 flex-wrap">
+            <div className="ml-auto flex items-center gap-2 flex-wrap">
               {app.isPublic && <Badge variant="blue">Public</Badge>}
               {app.isShared && <Badge variant="purple">Shared</Badge>}
               {app.isCustomerDeveloped && <Badge variant="yellow">Customer</Badge>}
               {app.tenancyType && <Badge variant="indigo">{app.tenancyType}</Badge>}
+              {writeMode && (
+                <button
+                  className="btn-secondary text-sm"
+                  onClick={() => {
+                    setEditForm({ displayName: app.displayName || '', owner: app.owner || '', ownerEmail: app.ownerEmail || '' });
+                    setFormError(null);
+                    setShowEdit(true);
+                  }}
+                >
+                  ✏️ Edit
+                </button>
+              )}
             </div>
           </div>
 
@@ -225,6 +249,54 @@ export default function ApplicationDetail() {
           </div>
         </>
       )}
+
+      {/* Edit Application modal */}
+      <FormModal
+        open={showEdit}
+        title={`Edit Application: ${app?.name}`}
+        onClose={() => setShowEdit(false)}
+        onSubmit={() => setPendingEdit(true)}
+        submitting={editSubmitting}
+        submitLabel="Save"
+      >
+        {formError && <ErrorAlert message={formError} />}
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
+            <input className="input" value={editForm.displayName} onChange={(e) => setEditForm((f) => ({ ...f, displayName: e.target.value }))} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Owner <span className="text-red-500">*</span></label>
+            <input className="input" required value={editForm.owner} onChange={(e) => setEditForm((f) => ({ ...f, owner: e.target.value }))} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Owner Email <span className="text-red-500">*</span></label>
+            <input className="input" type="email" required value={editForm.ownerEmail} onChange={(e) => setEditForm((f) => ({ ...f, ownerEmail: e.target.value }))} />
+          </div>
+        </div>
+      </FormModal>
+
+      <ConfirmDialog
+        open={pendingEdit}
+        title="Save Application Changes"
+        message={`Update application "${app?.name}" with new owner "${editForm.owner}"?`}
+        confirmLabel="Save"
+        onConfirm={async () => {
+          setEditSubmitting(true);
+          setFormError(null);
+          try {
+            const updated = await updateApplication(id, editForm);
+            setApp(updated);
+            setShowEdit(false);
+            setPendingEdit(false);
+          } catch (err) {
+            setFormError(err.message);
+          } finally {
+            setEditSubmitting(false);
+          }
+        }}
+        onCancel={() => setPendingEdit(false)}
+      />
     </div>
   );
 }

@@ -31,8 +31,12 @@ function auditLog(req, res, next) {
       method: req.method,
       path: req.path,
       query: req.query,
-      // Caller identity comes from an upstream gateway header or the JWT subject
-      user: req.headers['x-user-id'] || req.headers['x-forwarded-user'] || 'anonymous',
+      // Caller identity — prefer authenticated user from OAuth session
+      user:
+        req.authenticatedUser ||
+        req.headers['x-user-id'] ||
+        req.headers['x-forwarded-user'] ||
+        'anonymous',
       statusCode: res.statusCode,
       durationMs: Date.now() - startedAt,
     });

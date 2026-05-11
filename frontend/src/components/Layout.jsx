@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import { getWhoami } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { useWriteMode } from '../context/WriteModeContext';
 
 const NAV = [
   { to: '/', label: 'Dashboard', icon: '🏠', end: true },
@@ -10,12 +10,8 @@ const NAV = [
 ];
 
 export default function Layout() {
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    // UI: top-bar user chip → GET /bff/whoami → Helios: getCurrentUserInfo
-    getWhoami().then(setUser).catch(() => {});
-  }, []);
+  const { authenticated, user, loginUrl, logout, loading } = useAuth();
+  const { writeMode, setWriteMode, serverWriteEnabled } = useWriteMode();
 
   return (
     <div className="min-h-screen flex bg-gray-50">
@@ -53,21 +49,78 @@ export default function Layout() {
           ))}
         </nav>
 
-        {/* User chip */}
-        <div className="px-4 py-4 border-t border-gray-200">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50">
-            <div className="w-7 h-7 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 text-xs font-bold flex-shrink-0">
-              {user?.userId?.[0]?.toUpperCase() ?? '?'}
+        {/* ── Write Mode toggle ── */}
+        {serverWriteEnabled && (
+          <div className="px-4 py-3 border-t border-gray-200">
+            <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50">
+              <div>
+                <p className="text-xs font-medium text-gray-700">Write Mode</p>
+                <p className="text-xs text-gray-400">
+                  {writeMode ? 'Mutations enabled' : 'Read-only'}
+                </p>
+              </div>
+              <button
+                onClick={() => setWriteMode((v) => !v)}
+                className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 ${
+                  writeMode ? 'bg-brand-600' : 'bg-gray-300'
+                }`}
+                aria-pressed={writeMode}
+                title={writeMode ? 'Disable write mode' : 'Enable write mode'}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 mt-0.5 ${
+                    writeMode ? 'translate-x-4' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
             </div>
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-gray-900 truncate">
-                {user?.userId ?? 'Loading…'}
+            {writeMode && (
+              <p className="text-xs text-amber-600 mt-1.5 px-1">
+                ⚠️ Changes require confirmation
               </p>
-              <p className="text-xs text-gray-500 truncate">
-                {user?.tenantId ?? ''}
-              </p>
-            </div>
+            )}
           </div>
+        )}
+
+        {/* ── Auth section ── */}
+        <div className="px-4 py-4 border-t border-gray-200">
+          {loading ? (
+            <div className="px-3 py-2 text-xs text-gray-400 animate-pulse">Checking session…</div>
+          ) : authenticated ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50">
+                <div className="w-7 h-7 rounded-full bg-green-200 flex items-center justify-center text-green-800 text-xs font-bold flex-shrink-0">
+                  {(user?.name || user?.email || 'U')[0].toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-gray-900 truncate">
+                    {user?.name || user?.email || 'Authenticated'}
+                  </p>
+                  <p className="text-xs text-green-700">● Session active</p>
+                </div>
+              </div>
+              <button
+                onClick={logout}
+                className="w-full text-left px-3 py-1.5 text-xs text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                Sign out
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
+                <p className="text-xs font-medium text-amber-800">Not authenticated</p>
+                <p className="text-xs text-amber-600 mt-0.5">Authorize to access Helios</p>
+              </div>
+              {/* Clicking this triggers the Authorization Code + PKCE flow via BFF */}
+              <a
+                href={loginUrl}
+                className="flex items-center justify-center gap-2 w-full btn-primary text-sm py-2"
+              >
+                <span>🔐</span> Authorize
+              </a>
+            </div>
+          )}
         </div>
       </aside>
 

@@ -16,6 +16,7 @@ const BASE_URL = import.meta.env.VITE_BFF_URL || '/bff';
 const client = axios.create({
   baseURL: BASE_URL,
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true, // send the HttpOnly session cookie with every request
 });
 
 // Unwrap data and normalise error messages
@@ -27,9 +28,27 @@ client.interceptors.response.use(
       err.response?.data?.message ||
       err.message ||
       'An unexpected error occurred';
-    return Promise.reject(new Error(message));
+    const status = err.response?.status;
+    const error = new Error(message);
+    error.status = status;
+    // Expose loginUrl for 401 responses so the UI can redirect
+    error.loginUrl = err.response?.data?.error?.loginUrl || null;
+    return Promise.reject(error);
   }
 );
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+// GET /bff/auth/status — is there a live session?
+export const getAuthStatus = () =>
+  axios.get('/bff/auth/status', { withCredentials: true }).then((r) => r.data);
+
+// POST /bff/auth/logout — destroy the BFF session
+export const postLogout = () =>
+  axios.post('/bff/auth/logout', {}, { withCredentials: true }).then((r) => r.data);
+
+// ── Write-ops flag ────────────────────────────────────────────────────────────
+// UI: write-mode toggle → GET /bff/write-enabled → server ENABLE_WRITE_OPS flag
+export const getWriteEnabled = () => client.get('/write-enabled');
 
 // ── Current user ──────────────────────────────────────────────────────────────
 // UI: top-bar user chip → GET /bff/whoami → Helios: getCurrentUserInfo
@@ -43,6 +62,12 @@ export const getTenants = ({ name, pageSize, nextPageToken } = {}) =>
 
 // UI: tenant row click → GET /bff/tenants/:id → Helios: getTenant
 export const getTenant = (id) => client.get(`/tenants/${id}`);
+
+// UI: Create Tenant form (write mode) → POST /bff/tenants → Helios: createTenant
+export const createTenant = (body) => client.post('/tenants', body);
+
+// UI: Edit Tenant form (write mode) → PUT /bff/tenants/:id → Helios: updateTenant
+export const updateTenant = (id, body) => client.put(`/tenants/${id}`, body);
 
 // ── Applications ──────────────────────────────────────────────────────────────
 // UI: application search → GET /bff/applications → Helios: getAllApplications
@@ -63,7 +88,7 @@ export const getDeployments = (appId, { tenantId, pageSize, nextPageToken } = {}
     params: { tenantId, pageSize, nextPageToken },
   });
 
-// UI: deployment row click → GET /bff/applications/:id/deployments/:depId → Helios: getDeployment
+// UI: deployment row → GET /bff/applications/:id/deployments/:depId → Helios: getDeployment
 export const getDeployment = (appId, depId, tenantId) =>
   client.get(`/applications/${appId}/deployments/${depId}`, {
     params: tenantId ? { tenantId } : {},
@@ -75,11 +100,19 @@ export const getSettingDefinitions = (appId, { tenantId, pageSize, nextPageToken
     params: { tenantId, pageSize, nextPageToken },
   });
 
-// UI: setting def row click → GET /bff/applications/:id/setting-definitions/:sdId → Helios: getApplicationSettingDefinition
+// UI: setting def row → GET /bff/applications/:id/setting-definitions/:sdId → Helios: getApplicationSettingDefinition
 export const getSettingDefinition = (appId, sdId, tenantId) =>
   client.get(`/applications/${appId}/setting-definitions/${sdId}`, {
     params: tenantId ? { tenantId } : {},
   });
+
+// UI: Create Application form (write mode) → POST /bff/applications → Helios: createApplication
+export const createApplication = (body, tenantId) =>
+  client.post('/applications', body, { params: tenantId ? { tenantId } : {} });
+
+// UI: Edit Application form (write mode) → PUT /bff/applications/:id → Helios: updateApplication
+export const updateApplication = (id, body, tenantId) =>
+  client.put(`/applications/${id}`, body, { params: tenantId ? { tenantId } : {} });
 
 // ── Setting Values ────────────────────────────────────────────────────────────
 // UI: setting values search → GET /bff/setting-values → Helios: getAllSettingValues
@@ -94,7 +127,7 @@ export const getSettingValues = ({
     params: { tenantId, applicationId, name, pageSize, nextPageToken },
   });
 
-// UI: setting value row click → GET /bff/setting-values/:id → Helios: getSettingValue
+// UI: setting value row → GET /bff/setting-values/:id → Helios: getSettingValue
 export const getSettingValue = (id, tenantId) =>
   client.get(`/setting-values/${id}`, { params: tenantId ? { tenantId } : {} });
 
@@ -103,3 +136,11 @@ export const getSettingValueHistory = (id, tenantId) =>
   client.get(`/setting-values/${id}/history`, {
     params: tenantId ? { tenantId } : {},
   });
+
+// UI: Create Setting Value form (write mode) → POST /bff/setting-values → Helios: createSettingValue
+export const createSettingValue = (body, tenantId) =>
+  client.post('/setting-values', body, { params: tenantId ? { tenantId } : {} });
+
+// UI: Edit Setting Value form (write mode) → PUT /bff/setting-values/:id → Helios: updateSettingValue
+export const updateSettingValue = (id, body, tenantId) =>
+  client.put(`/setting-values/${id}`, body, { params: tenantId ? { tenantId } : {} });
