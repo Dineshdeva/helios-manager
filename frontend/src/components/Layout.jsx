@@ -1,6 +1,8 @@
 import { NavLink, Outlet } from 'react-router-dom';
+import { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useWriteMode } from '../context/WriteModeContext';
+import { postDevToken } from '../services/api';
 
 const NAV = [
   { to: '/', label: 'Dashboard', icon: '🏠', end: true },
@@ -10,8 +12,30 @@ const NAV = [
 ];
 
 export default function Layout() {
-  const { authenticated, user, loginUrl, logout, loading } = useAuth();
+  const { authenticated, user, loginUrl, logout, loading, refresh } = useAuth();
   const { writeMode, setWriteMode, serverWriteEnabled } = useWriteMode();
+  const [showTokenInput, setShowTokenInput] = useState(false);
+  const [tokenValue, setTokenValue] = useState('');
+  const [tokenStatus, setTokenStatus] = useState(null); // null | 'loading' | 'ok' | 'error'
+  const [tokenError, setTokenError] = useState('');
+  const tokenRef = useRef(null);
+
+  async function handlePasteToken() {
+    const trimmed = tokenValue.trim();
+    if (!trimmed) return;
+    setTokenStatus('loading');
+    setTokenError('');
+    try {
+      await postDevToken(trimmed);
+      setTokenStatus('ok');
+      setTokenValue('');
+      setShowTokenInput(false);
+      await refresh();
+    } catch (err) {
+      setTokenStatus('error');
+      setTokenError(err?.response?.data?.error?.message || err.message || 'Failed to set token. Ensure the token is valid and copied correctly from the Helios Swagger UI.');
+    }
+  }
 
   return (
     <div className="min-h-screen flex bg-gray-50">
@@ -119,6 +143,47 @@ export default function Layout() {
               >
                 <span>🔐</span> Authorize
               </a>
+
+              {/* ── Fallback: paste token from Helios Swagger UI ── */}
+              <button
+                onClick={() => {
+                  setShowTokenInput((v) => !v);
+                  setTokenStatus(null);
+                  setTokenError('');
+                  setTimeout(() => tokenRef.current?.focus(), 50);
+                }}
+                className="w-full text-left px-3 py-1.5 text-xs text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                {showTokenInput ? '▲ Hide token input' : '🔑 Paste token from Swagger UI'}
+              </button>
+
+              {showTokenInput && (
+                <div className="space-y-1.5 px-1">
+                  <p className="text-xs text-gray-500 leading-snug">
+                    Can't register the redirect URI? Authorize in the{' '}
+                    <strong>Helios Swagger UI</strong>, copy the Bearer token from DevTools →
+                    Network, and paste it here.
+                  </p>
+                  <textarea
+                    ref={tokenRef}
+                    rows={3}
+                    value={tokenValue}
+                    onChange={(e) => setTokenValue(e.target.value)}
+                    placeholder="Paste Bearer token…"
+                    className="w-full text-xs border border-gray-300 rounded-lg px-2 py-1.5 font-mono resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                  {tokenStatus === 'error' && (
+                    <p className="text-xs text-red-600">{tokenError}</p>
+                  )}
+                  <button
+                    onClick={handlePasteToken}
+                    disabled={!tokenValue.trim() || tokenStatus === 'loading'}
+                    className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {tokenStatus === 'loading' ? 'Setting…' : '✓ Use this token'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -14,7 +14,7 @@ const morgan = require('morgan');
 
 const config = require('./config');
 const routes = require('./routes');
-const { login, callback, logout, status } = require('./auth/oauthHandler');
+const { login, callback, logout, status, devSetToken } = require('./auth/oauthHandler');
 const { sessionAuthMiddleware } = require('./middleware/sessionAuth');
 const { auditLog } = require('./middleware/audit');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -61,6 +61,14 @@ app.get('/bff/auth/login', login);
 app.get('/bff/auth/callback', callback);
 app.post('/bff/auth/logout', logout);
 app.get('/bff/auth/status', status);
+
+// ── Dev-only: manual token injection ─────────────────────────────────────────
+// Allows seeding a token captured from the Helios Swagger UI when the OAuth
+// redirect URI cannot be registered in Okta. Never mounted in production.
+if (process.env.NODE_ENV !== 'production') {
+  app.post('/bff/auth/dev-token', devSetToken);
+  console.log('[BFF] ⚠️  Dev token endpoint enabled: POST /bff/auth/dev-token');
+}
 
 // ── BFF data routes (audit → session/OAuth token → business logic) ────────────
 app.use('/bff', auditLog, sessionAuthMiddleware, routes);

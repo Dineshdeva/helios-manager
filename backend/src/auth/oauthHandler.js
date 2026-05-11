@@ -196,4 +196,33 @@ function status(req, res) {
   });
 }
 
-module.exports = { login, callback, logout, status };
+/**
+ * POST /bff/auth/dev-token  (DEV ONLY — never mounted in production)
+ * Allows a developer to manually seed an access token obtained from the
+ * Helios Swagger UI "Authorize" dialog into the BFF session, bypassing the
+ * OAuth redirect flow when the redirect URI cannot be registered in Okta.
+ *
+ * Usage:
+ *   1. Open the Helios Swagger UI and click Authorize to get a token.
+ *   2. Open DevTools → Network → copy the Bearer token from any API call.
+ *   3. POST { "token": "<bearer-token>" } to this endpoint.
+ *   4. The BFF session is now live — the frontend will show "Session active".
+ *
+ * Body: { token: string, expiresInSeconds?: number }
+ */
+function devSetToken(req, res) {
+  const { token, expiresInSeconds } = req.body || {};
+  if (!token || typeof token !== 'string' || !token.trim()) {
+    return res.status(400).json({ error: { status: 400, message: 'token is required.' } });
+  }
+  const DEFAULT_DEV_TOKEN_TTL_SECONDS = 3600;
+  const ttl = (typeof expiresInSeconds === 'number' && expiresInSeconds > 0)
+    ? expiresInSeconds
+    : DEFAULT_DEV_TOKEN_TTL_SECONDS;
+  req.session.accessToken = token.trim();
+  req.session.tokenExpiresAt = Date.now() + ttl * 1000;
+  req.session.userInfo = { name: 'Dev (manual token)', email: null, sub: null };
+  res.json({ ok: true, expiresAt: new Date(req.session.tokenExpiresAt).toISOString() });
+}
+
+module.exports = { login, callback, logout, status, devSetToken };

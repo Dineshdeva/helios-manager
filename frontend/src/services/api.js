@@ -48,6 +48,12 @@ export const getAuthStatus = () =>
 export const postLogout = () =>
   axios.post(`${BFF_BASE}/auth/logout`, {}, { withCredentials: true }).then((r) => r.data);
 
+// POST /bff/auth/dev-token — seed a manually captured token (dev only)
+export const postDevToken = (token) =>
+  axios
+    .post(`${BFF_BASE}/auth/dev-token`, { token }, { withCredentials: true })
+    .then((r) => r.data);
+
 // ── Write-ops flag ────────────────────────────────────────────────────────────
 // UI: write-mode toggle → GET /bff/write-enabled → server ENABLE_WRITE_OPS flag
 export const getWriteEnabled = () => client.get('/write-enabled');
