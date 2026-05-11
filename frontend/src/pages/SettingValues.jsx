@@ -47,8 +47,8 @@ const EMPTY_EDIT = { value: '', comment: '' };
 
 export default function SettingValues() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [nameQuery, setNameQuery] = useState(searchParams.get('name') || '');
-  const [applicationId, setApplicationId] = useState(searchParams.get('applicationId') || '');
+  const [nameQuery, setNameQuery] = useState(searchParams.get('setting') || searchParams.get('name') || '');
+  const [application, setApplication] = useState(searchParams.get('application') || searchParams.get('applicationId') || '');
   const [tenantId, setTenantId] = useState(searchParams.get('tenantId') || '');
 
   const [items, setItems] = useState([]);
@@ -80,14 +80,14 @@ export default function SettingValues() {
 
   const [formError, setFormError] = useState(null);
 
-  const load = useCallback(async (name, appId, tid, token = null) => {
+  const load = useCallback(async (name, appName, tid, token = null) => {
     if (token) setPageLoading(true);
     else setLoading(true);
     setError(null);
     try {
       const result = await getSettingValues({
-        name: name || undefined,
-        applicationId: appId || undefined,
+        setting: name || undefined,
+        application: appName || undefined,
         tenantId: tid || undefined,
         pageSize: 50,
         nextPageToken: token || undefined,
@@ -103,20 +103,20 @@ export default function SettingValues() {
     }
   }, []);
 
-  useEffect(() => { load(nameQuery, applicationId, tenantId); }, [load]);
+  useEffect(() => { load(nameQuery, application, tenantId); }, [load]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setItems([]); setNextPageToken(null);
-      load(nameQuery, applicationId, tenantId);
+      load(nameQuery, application, tenantId);
       const params = {};
-      if (nameQuery) params.name = nameQuery;
-      if (applicationId) params.applicationId = applicationId;
+      if (nameQuery) params.setting = nameQuery;
+      if (application) params.application = application;
       if (tenantId) params.tenantId = tenantId;
       setSearchParams(params);
     }, 400);
     return () => clearTimeout(timer);
-  }, [nameQuery, applicationId, tenantId, load, setSearchParams]);
+  }, [nameQuery, application, tenantId, load, setSearchParams]);
 
   const openDetail = useCallback(async (sv) => {
     setSelected(null);
@@ -207,14 +207,14 @@ export default function SettingValues() {
           </svg>
           <input type="text" className="input pl-9" placeholder="Search by setting name…" value={nameQuery} onChange={(e) => setNameQuery(e.target.value)} />
         </div>
-        <input type="text" className="input max-w-xs" placeholder="Application ID…" value={applicationId} onChange={(e) => setApplicationId(e.target.value)} />
-        <input type="text" className="input max-w-xs" placeholder="Tenant ID…" value={tenantId} onChange={(e) => setTenantId(e.target.value)} />
+          <input type="text" className="input max-w-xs" placeholder="Application name…" value={application} onChange={(e) => setApplication(e.target.value)} />
+          <input type="text" className="input max-w-xs" placeholder="Tenant ID…" value={tenantId} onChange={(e) => setTenantId(e.target.value)} />
       </div>
 
       <div className="flex gap-6">
         {/* ── Results ── */}
         <div className="flex-1 min-w-0">
-          {error && <ErrorAlert message={error} onRetry={() => load(nameQuery, applicationId, tenantId)} />}
+          {error && <ErrorAlert message={error} onRetry={() => load(nameQuery, application, tenantId)} />}
           {loading && !error && <LoadingSpinner />}
 
           {!loading && !error && (
@@ -226,7 +226,7 @@ export default function SettingValues() {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        {['Name', 'Application ID', 'Value', 'Type', 'Modified On', writeMode && 'Actions'].filter(Boolean).map((h) => (
+                        {['Name', 'Application', 'Value', 'Type', 'Modified On', writeMode && 'Actions'].filter(Boolean).map((h) => (
                           <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
                         ))}
                       </tr>
@@ -239,7 +239,10 @@ export default function SettingValues() {
                           onClick={() => openDetail(sv)}
                         >
                           <td className="px-6 py-4 text-sm font-mono font-medium text-gray-900 max-w-xs truncate">{sv.name}</td>
-                          <td className="px-6 py-4 text-sm text-gray-500 font-mono truncate max-w-[120px]">{sv.applicationId}</td>
+                          <td className="px-6 py-4 text-sm text-gray-500 truncate max-w-[220px]">
+                            <p className="text-gray-700 truncate">{sv.applicationName || '—'}</p>
+                            <p className="font-mono text-xs truncate">{sv.applicationId}</p>
+                          </td>
                           <td className="px-6 py-4 text-sm text-gray-700 max-w-xs truncate font-mono">
                             {sv.isSecret ? <span className="text-gray-400 italic">redacted</span> : sv.value}
                           </td>
@@ -262,7 +265,7 @@ export default function SettingValues() {
                 )}
               </div>
 
-              <Pagination nextPageToken={nextPageToken} onLoadMore={() => load(nameQuery, applicationId, tenantId, nextPageToken)} loading={pageLoading} totalCount={totalCount} loadedCount={items.length} />
+              <Pagination nextPageToken={nextPageToken} onLoadMore={() => load(nameQuery, application, tenantId, nextPageToken)} loading={pageLoading} totalCount={totalCount} loadedCount={items.length} />
             </>
           )}
         </div>
@@ -283,7 +286,11 @@ export default function SettingValues() {
                     <button onClick={() => { setSelected(null); setHistory(null); }} className="text-gray-400 hover:text-gray-600 ml-2 flex-shrink-0">✕</button>
                   </div>
                   <dl className="space-y-2 text-sm">
-                    <div><dt className="text-xs text-gray-500">Application ID</dt><dd className="font-mono text-gray-800 break-all">{selected.applicationId}</dd></div>
+                    <div>
+                      <dt className="text-xs text-gray-500">Application</dt>
+                      <dd className="text-gray-800 break-all">{selected.applicationName || '—'}</dd>
+                      <dd className="font-mono text-xs text-gray-500 break-all">{selected.applicationId}</dd>
+                    </div>
                     <div>
                       <dt className="text-xs text-gray-500">Value</dt>
                       <dd className="font-mono text-gray-800 break-all bg-gray-50 rounded px-2 py-1 mt-0.5">
@@ -359,4 +366,3 @@ export default function SettingValues() {
     </div>
   );
 }
-

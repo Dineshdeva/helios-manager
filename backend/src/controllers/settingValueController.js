@@ -31,8 +31,8 @@ async function listSettingValues(req, res, next) {
     const client = createHeliosClient(req.heliosToken, req.query.tenantId);
     const { data } = await client.get('/v1/setting-values', {
       params: {
-        applicationId: req.query.applicationId || undefined,
-        name: req.query.name || undefined,
+        application: req.query.application || req.query.applicationId || undefined,
+        setting: req.query.setting || req.query.name || undefined,
         pageSize: req.query.pageSize ? Number(req.query.pageSize) : 50,
         nextPageToken: req.query.nextPageToken || undefined,
       },

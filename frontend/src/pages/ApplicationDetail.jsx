@@ -241,7 +241,7 @@ export default function ApplicationDetail() {
           {/* Quick link to setting values */}
           <div className="mt-4">
             <Link
-              to={`/setting-values?applicationId=${app.id}`}
+              to={`/setting-values?application=${encodeURIComponent(app.name)}`}
               className="btn-secondary"
             >
               View Setting Values for this Application →

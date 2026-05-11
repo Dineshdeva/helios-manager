@@ -56,6 +56,7 @@ function mapSettingValue(sv) {
   return {
     id: sv.id,
     applicationId: sv.applicationId,
+    applicationName: sv.applicationName || null,
     name: sv.name,
     // Never expose secret values to the frontend
     value: isSecret ? '***REDACTED***' : sv.value,

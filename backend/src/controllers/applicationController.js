@@ -36,16 +36,18 @@ const { validateId, validateDeploymentId } = require('../utils/sanitize');
 async function listApplications(req, res, next) {
   try {
     const client = createHeliosClient(req.heliosToken, req.query.tenantId);
-    const { data } = await client.get('/v1/applications', {
+    const { data, headers } = await client.get('/v1/applications', {
       params: {
-        name: req.query.name || undefined,
+        application: req.query.application || req.query.name || undefined,
         pageSize: req.query.pageSize ? Number(req.query.pageSize) : 50,
         nextPageToken: req.query.nextPageToken || undefined,
       },
     });
+    const list = Array.isArray(data) ? data : (data.data || []);
+    const nextTokenFromHeader = headers?.['x-gwre-next-page-token'] || null;
     res.json({
-      items: (data.data || []).map(mapApplication),
-      nextPageToken: data.nextPageToken || null,
+      items: list.map(mapApplication),
+      nextPageToken: (Array.isArray(data) ? nextTokenFromHeader : data.nextPageToken) || null,
       totalCount: data.totalCount ?? null,
     });
   } catch (err) {

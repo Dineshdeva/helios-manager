@@ -79,8 +79,10 @@ export const updateTenant = (id, body) => client.put(`/tenants/${id}`, body);
 
 // ── Applications ──────────────────────────────────────────────────────────────
 // UI: application search → GET /bff/applications → Helios: getAllApplications
-export const getApplications = ({ name, tenantId, pageSize, nextPageToken } = {}) =>
-  client.get('/applications', { params: { name, tenantId, pageSize, nextPageToken } });
+export const getApplications = ({ application, name, tenantId, pageSize, nextPageToken } = {}) =>
+  client.get('/applications', {
+    params: { application: application ?? name, tenantId, pageSize, nextPageToken },
+  });
 
 // UI: application row click → GET /bff/applications/:id → Helios: getApplication
 export const getApplication = (id, tenantId) =>
@@ -126,13 +128,21 @@ export const updateApplication = (id, body, tenantId) =>
 // UI: setting values search → GET /bff/setting-values → Helios: getAllSettingValues
 export const getSettingValues = ({
   tenantId,
+  application,
   applicationId,
+  setting,
   name,
   pageSize,
   nextPageToken,
 } = {}) =>
   client.get('/setting-values', {
-    params: { tenantId, applicationId, name, pageSize, nextPageToken },
+    params: {
+      tenantId,
+      application: application ?? applicationId,
+      setting: setting ?? name,
+      pageSize,
+      nextPageToken,
+    },
   });
 
 // UI: setting value row → GET /bff/setting-values/:id → Helios: getSettingValue
