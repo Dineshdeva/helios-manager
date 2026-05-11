@@ -41,7 +41,10 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,            // never readable by JS in the browser
-      secure: process.env.NODE_ENV === 'production', // HTTPS-only in prod
+      // Mark cookies as Secure when the server knows it is serving HTTPS.
+      // COOKIE_SECURE=true must be set explicitly in production (e.g. behind a
+      // TLS-terminating reverse proxy where NODE_ENV alone is insufficient).
+      secure: process.env.COOKIE_SECURE === 'true',
       sameSite: 'lax',
       maxAge: 8 * 60 * 60 * 1000, // 8 h session lifetime
     },

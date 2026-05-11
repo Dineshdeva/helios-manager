@@ -19,7 +19,7 @@ const client = axios.create({
   withCredentials: true, // send the HttpOnly session cookie with every request
 });
 
-// Unwrap data and normalise error messages
+// Unwrap data and normalize error messages
 client.interceptors.response.use(
   (res) => res.data,
   (err) => {

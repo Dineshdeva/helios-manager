@@ -19,8 +19,9 @@ const SAFE_ID_RE = /^[A-Za-z0-9\-_]+$/;
  * Slightly broader set for Helios deployment IDs which use colon-separated
  * notation and dots for version segments.
  * Allows: letters, digits, hyphens, underscores, dots, colons.
+ * Forward slashes are intentionally excluded to prevent path traversal.
  */
-const SAFE_DEPLOYMENT_ID_RE = /^[A-Za-z0-9\-_./:]+$/;
+const SAFE_DEPLOYMENT_ID_RE = /^[A-Za-z0-9\-_.:-]+$/;
 
 const MAX_PARAM_LENGTH = 256;
 

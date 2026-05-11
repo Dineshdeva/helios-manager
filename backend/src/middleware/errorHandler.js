@@ -1,7 +1,7 @@
 /**
- * Centralised error handler.
+ * Centralized error handler.
  *
- * Normalises errors from Helios upstream, the auth layer, and validation into
+ * Normalizes errors from Helios upstream, the auth layer, and validation into
  * a consistent JSON envelope: { error: { status, message, upstream? } }.
  * Never leaks stack traces or access tokens to the client.
  */
