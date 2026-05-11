@@ -8,12 +8,14 @@
  * redirects back with after the Authorization Code flow completes.
  */
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { getAuthStatus, postLogout } from '../services/api';
+import { getAuthStatus, postLogout, BFF_BASE } from '../services/api';
+
+const DEFAULT_LOGIN_URL = `${BFF_BASE}/auth/login`;
 
 const AuthContext = createContext({
   authenticated: false,
   user: null,
-  loginUrl: '/bff/auth/login',
+  loginUrl: DEFAULT_LOGIN_URL,
   loading: true,
   authError: null,
   logout: async () => {},
@@ -24,7 +26,7 @@ export function AuthProvider({ children }) {
   const [state, setState] = useState({
     authenticated: false,
     user: null,
-    loginUrl: '/bff/auth/login',
+    loginUrl: DEFAULT_LOGIN_URL,
     loading: true,
     authError: null,
   });
@@ -36,7 +38,12 @@ export function AuthProvider({ children }) {
         ...s,
         authenticated: data.authenticated,
         user: data.user,
-        loginUrl: data.loginUrl || '/bff/auth/login',
+        // Prefer an absolute URL from the server; relative paths won't work
+        // cross-origin (frontend on Vercel, backend on Render/Railway).
+        loginUrl:
+          data.loginUrl && data.loginUrl.startsWith('http')
+            ? data.loginUrl
+            : DEFAULT_LOGIN_URL,
         loading: false,
         authError: null,
       }));
@@ -72,7 +79,7 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     await postLogout().catch(() => {});
-    setState({ authenticated: false, user: null, loginUrl: '/bff/auth/login', loading: false, authError: null });
+    setState({ authenticated: false, user: null, loginUrl: DEFAULT_LOGIN_URL, loading: false, authError: null });
   }, []);
 
   return (
