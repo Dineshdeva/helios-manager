@@ -11,6 +11,7 @@
  */
 const { createHeliosClient } = require('../clients/heliosClient');
 const { mapTenant } = require('../dto');
+const { validateId } = require('../utils/sanitize');
 
 async function listTenants(req, res, next) {
   try {
@@ -34,8 +35,9 @@ async function listTenants(req, res, next) {
 
 async function getTenant(req, res, next) {
   try {
+    const id = validateId(req.params.id, 'tenantId');
     const client = createHeliosClient(req.heliosToken);
-    const { data } = await client.get(`/v1/tenants/${req.params.id}`);
+    const { data } = await client.get(`/v1/tenants/${id}`);
     res.json(mapTenant(data.data || data));
   } catch (err) {
     next(err);

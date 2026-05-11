@@ -13,12 +13,14 @@
  */
 const { createHeliosClient } = require('../clients/heliosClient');
 const { mapSettingDefinition } = require('../dto');
+const { validateId } = require('../utils/sanitize');
 
 async function listSettingDefinitions(req, res, next) {
   try {
+    const id = validateId(req.params.id, 'applicationId');
     const client = createHeliosClient(req.heliosToken, req.query.tenantId);
     const { data } = await client.get(
-      `/v1/applications/${req.params.id}/setting-definitions`,
+      `/v1/applications/${id}/setting-definitions`,
       {
         params: {
           pageSize: req.query.pageSize ? Number(req.query.pageSize) : 50,
@@ -37,9 +39,11 @@ async function listSettingDefinitions(req, res, next) {
 
 async function getSettingDefinition(req, res, next) {
   try {
+    const id = validateId(req.params.id, 'applicationId');
+    const sdId = validateId(req.params.sdId, 'settingDefinitionId');
     const client = createHeliosClient(req.heliosToken, req.query.tenantId);
     const { data } = await client.get(
-      `/v1/applications/${req.params.id}/setting-definitions/${req.params.sdId}`
+      `/v1/applications/${id}/setting-definitions/${sdId}`
     );
     res.json(mapSettingDefinition(data.data || data));
   } catch (err) {

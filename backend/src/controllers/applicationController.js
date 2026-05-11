@@ -23,6 +23,7 @@
  */
 const { createHeliosClient } = require('../clients/heliosClient');
 const { mapApplication, mapDeployment } = require('../dto');
+const { validateId, validateDeploymentId } = require('../utils/sanitize');
 
 async function listApplications(req, res, next) {
   try {
@@ -46,8 +47,9 @@ async function listApplications(req, res, next) {
 
 async function getApplication(req, res, next) {
   try {
+    const id = validateId(req.params.id, 'applicationId');
     const client = createHeliosClient(req.heliosToken, req.query.tenantId);
-    const { data } = await client.get(`/v1/applications/${req.params.id}`);
+    const { data } = await client.get(`/v1/applications/${id}`);
     res.json(mapApplication(data.data || data));
   } catch (err) {
     next(err);
@@ -56,8 +58,9 @@ async function getApplication(req, res, next) {
 
 async function getApplicationRoles(req, res, next) {
   try {
+    const id = validateId(req.params.id, 'applicationId');
     const client = createHeliosClient(req.heliosToken, req.query.tenantId);
-    const { data } = await client.get(`/v1/applications/${req.params.id}/roles`);
+    const { data } = await client.get(`/v1/applications/${id}/roles`);
     res.json(data);
   } catch (err) {
     next(err);
@@ -66,9 +69,10 @@ async function getApplicationRoles(req, res, next) {
 
 async function listDeployments(req, res, next) {
   try {
+    const id = validateId(req.params.id, 'applicationId');
     const client = createHeliosClient(req.heliosToken, req.query.tenantId);
     const { data } = await client.get(
-      `/v1/applications/${req.params.id}/deployments`,
+      `/v1/applications/${id}/deployments`,
       {
         params: {
           pageSize: req.query.pageSize ? Number(req.query.pageSize) : 50,
@@ -87,9 +91,11 @@ async function listDeployments(req, res, next) {
 
 async function getDeployment(req, res, next) {
   try {
+    const id = validateId(req.params.id, 'applicationId');
+    const depId = validateDeploymentId(req.params.depId, 'deploymentId');
     const client = createHeliosClient(req.heliosToken, req.query.tenantId);
     const { data } = await client.get(
-      `/v1/applications/${req.params.id}/deployments/${req.params.depId}`
+      `/v1/applications/${id}/deployments/${depId}`
     );
     res.json(mapDeployment(data.data || data));
   } catch (err) {

@@ -16,6 +16,7 @@
  */
 const { createHeliosClient } = require('../clients/heliosClient');
 const { mapSettingValue } = require('../dto');
+const { validateId } = require('../utils/sanitize');
 
 async function listSettingValues(req, res, next) {
   try {
@@ -40,8 +41,9 @@ async function listSettingValues(req, res, next) {
 
 async function getSettingValue(req, res, next) {
   try {
+    const id = validateId(req.params.id, 'settingValueId');
     const client = createHeliosClient(req.heliosToken, req.query.tenantId);
-    const { data } = await client.get(`/v1/setting-values/${req.params.id}`);
+    const { data } = await client.get(`/v1/setting-values/${id}`);
     res.json(mapSettingValue(data.data || data));
   } catch (err) {
     next(err);
@@ -50,9 +52,10 @@ async function getSettingValue(req, res, next) {
 
 async function getSettingValueHistory(req, res, next) {
   try {
+    const id = validateId(req.params.id, 'settingValueId');
     const client = createHeliosClient(req.heliosToken, req.query.tenantId);
     const { data } = await client.get(
-      `/v1/setting-values/${req.params.id}/history`
+      `/v1/setting-values/${id}/history`
     );
     res.json(data);
   } catch (err) {

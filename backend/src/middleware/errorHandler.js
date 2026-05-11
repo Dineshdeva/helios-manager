@@ -6,6 +6,15 @@
  * Never leaks stack traces or access tokens to the client.
  */
 
+/**
+ * Express error-handling middleware.
+ *
+ * NOTE: Express identifies error-handling middleware by the arity of the function
+ * (it must declare exactly 4 parameters: err, req, res, next). The `next`
+ * parameter is required by the framework signature even though it is not called
+ * in this implementation; omitting it would cause Express to treat this as a
+ * regular middleware and errors would not be routed here.
+ */
 // eslint-disable-next-line no-unused-vars
 function errorHandler(err, req, res, next) {
   const status = err.status || err.response?.status || 500;
